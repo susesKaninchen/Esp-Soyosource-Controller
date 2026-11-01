@@ -1,0 +1,6 @@
+.pio/
+.vscode/
+extracted_strings.txt
+all_rodata_strings.txt
+*.pyc
+__pycache__/

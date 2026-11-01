@@ -59,7 +59,43 @@ Internet Explorer wird nicht unterstützt!(die kochen wieder eigenes Sueppchen b
 
 
 
-# EspSoyosourceController mit Webseite
+# EspSoyosourceController (Open-Source PlatformIO Edition)
+
+Dieses Repository enthält den vollständig re-engineerten, quelloffenen C++ Quellcode des Soyosource Controllers für **PlatformIO**. Er ersetzt die bisherige closed-source Firmware-Binärdatei durch ein sauberes, erweiterbares Projekt mit moderner, responsiver Web-Oberfläche.
+
+### Highlights & Neuerungen:
+- **100% Quelloffen (C++ / PlatformIO):** Vollständige Offenlegung des Soyosource RS485-Protokolls (4800 Baud, 8N1, Checksummenberechnung).
+- **Multi-Plattform:** Unterstützt sowohl **ESP8266** (`d1_mini`) als auch **ESP32** (`esp32dev`).
+- **Modernes Web-Dashboard:**
+  - Responsive HTML5/CSS3 Oberfläche mit Dark-Mode-Optik.
+  - Live-Pulsierender Herzschlag-Indikator, Live-Leistungskarten (Netz, Einspeisung, Limiter, Toleranzbereich).
+  - Interaktiver Schieberegler für manuelle Leistungsvorgabe mit Sofort-Feedback.
+  - NotAus-Schalter mit sofortiger 0W-Sicherheitsabschaltung.
+  - Dynamische Konfigurationsbereiche für Shelly (Gen1 3EM & Gen2 Pro 3EM RPC), MQTT und JSON-Endpunkte (z.B. Tasmota IR-Lesekopf).
+- **Web OTA Updater:** Firmware-Aktualisierung direkt über den Browser unter `http://<IP>/update` ohne USB-Kabel.
+- **Konfigurations-Speicher:** Alle Einstellungen werden persistent im Flash per `LittleFS` (`/config.json`) gesichert.
+- **Abwärtskompatible REST-API:** Alle bestehenden Endpunkte (`/data`, `/state`, `/L1L2L3Auto`, `/NotAus`, `/MaxPower`, etc.) werden 1:1 unterstützt.
+
+### Kompilieren & Flashen mit PlatformIO:
+```bash
+# Bauen für ESP8266 (D1 Mini / ESP-12F)
+pio run -e d1_mini
+
+# Per USB flashen
+pio run -e d1_mini -t upload
+
+# Bauen für ESP32
+pio run -e esp32dev
+```
+
+### Web-OTA-Update (ohne USB):
+1. In PlatformIO kompilieren: `pio run -e d1_mini`
+2. Im Browser `http://<IP-des-ESP>/update` öffnen
+3. Die Datei `.pio/build/d1_mini/firmware.bin` auswählen und hochladen
+
+---
+
+# EspSoyosourceController mit Webseite (Original-Dokumentation)
 Der Esp8266 ist über ein Rs485 Modul mit dem Soyosource 1200 Solar/Batterie Wechselrichter verbunden und kann diesem die Leistungswerte senden die er im Stromnetz ausgleichen/einspeisen soll. 
 ManualMode: Der Leistungswert kann auf der Esp Webseite eingegeben und gesendet werden. 
 AutoMode: Der Esp empfängt über Mqtt Topic oder WebInterface den LeistungsWert (z.B. der Wert einer Messeinrichtung über die 3 Phasen)

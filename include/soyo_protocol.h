@@ -1,0 +1,61 @@
+#pragma once
+
+#include <Arduino.h>
+
+/**
+ * Soyosource GTN Inverter RS485 Protocol Handler
+ * 
+ * Communication parameters:
+ * - Baud rate: 4800 Baud
+ * - Data bits: 8, Parity: None, Stop bits: 1 (8N1)
+ * 
+ * Frame Format (8 Bytes):
+ * Byte 0: 0x24 (ASCII '$')
+ * Byte 1: 0x56 (ASCII 'V')
+ * Byte 2: 0x00 (Fixed)
+ * Byte 3: 0x21 (Command ID)
+ * Byte 4: Power High Byte (Big Endian)
+ * Byte 5: Power Low Byte  (Big Endian)
+ * Byte 6: 0x80 (Command flag)
+ * Byte 7: Checksum = (0xFF - sum(Bytes 1..6)) & 0xFF
+ */
+
+class SoyosourceProtocol {
+public:
+    static const uint8_t HEADER_0 = 0x24;
+    static const uint8_t HEADER_1 = 0x56;
+    static const uint8_t FIXED_2  = 0x00;
+    static const uint8_t CMD_ID   = 0x21;
+    static const uint8_t CMD_FLAG = 0x80;
+
+    /**
+     * Calculate Soyosource packet checksum
+     */
+    static uint8_t calculateChecksum(const uint8_t* frame) {
+        uint8_t sum = frame[1] + frame[2] + frame[3] + frame[4] + frame[5] + frame[6];
+        return (uint8_t)(0xFF - sum);
+    }
+
+    /**
+     * Build an 8-byte command frame for the requested power in Watts.
+     */
+    static void buildFrame(uint16_t watts, uint8_t* outFrame) {
+        outFrame[0] = HEADER_0;
+        outFrame[1] = HEADER_1;
+        outFrame[2] = FIXED_2;
+        outFrame[3] = CMD_ID;
+        outFrame[4] = (uint8_t)((watts >> 8) & 0xFF);
+        outFrame[5] = (uint8_t)(watts & 0xFF);
+        outFrame[6] = CMD_FLAG;
+        outFrame[7] = calculateChecksum(outFrame);
+    }
+
+    /**
+     * Validate a received frame (8 bytes)
+     */
+    static bool validateFrame(const uint8_t* frame, size_t len) {
+        if (len < 8) return false;
+        if (frame[0] != HEADER_0 || frame[1] != HEADER_1) return false;
+        return (frame[7] == calculateChecksum(frame));
+    }
+};
