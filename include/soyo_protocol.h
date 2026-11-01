@@ -79,4 +79,33 @@ public:
             digitalWrite(derePin, LOW);
         }
     }
+
+    /**
+     * Parse an incoming status frame from Soyosource inverter.
+     * Standard status frame is 10 bytes:
+     * - frame[0]: operation status
+     * - frame[1..2]: raw battery voltage (0.1V resolution)
+     * - frame[3..4]: raw battery current (0.1A resolution)
+     * - frame[5..6]: AC grid voltage
+     * - frame[7..8]: temperature
+     * - frame[9]: checksum (0xFF - sum(frame[1..8]))
+     */
+    static bool parseStatusFrame(const uint8_t* frame, size_t len, float& outVolts, float& outAmps, uint8_t& outStatus) {
+        if (len < 10) return false;
+
+        uint8_t sum = 0;
+        for (size_t i = 1; i < 9; i++) {
+            sum += frame[i];
+        }
+        uint8_t expectedCks = (uint8_t)(0xFF - sum);
+        if (frame[9] != expectedCks) return false;
+
+        outStatus = frame[0];
+        uint16_t rawVolts = ((uint16_t)frame[1] << 8) | frame[2];
+        uint16_t rawAmps  = ((uint16_t)frame[3] << 8) | frame[4];
+
+        outVolts = rawVolts * 0.1f;
+        outAmps  = rawAmps * 0.1f;
+        return true;
+    }
 };

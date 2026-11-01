@@ -39,6 +39,7 @@ struct SystemConfig {
     int tolerance_import = 5;   // Grid import threshold before increasing output (W)
     int rs485_dere_pin = 0;     // Hardware DE/RE direction pin (0 = GPIO0/D3, -1 = disabled/auto-flow)
     int sensor_timeout_sec = 30;// Failsafe timeout in seconds (0 = disabled)
+    float min_battery_voltage = 47.0f; // Undervoltage cutoff threshold (V, 0 = disabled)
     bool not_aus = false;       // Emergency stop flag
 
     // MQTT Settings
@@ -70,6 +71,13 @@ struct SystemConfig {
     unsigned long last_packet_time = 0;
     unsigned long last_sensor_time = 0;
     bool sensor_timeout = false;
+    float dc_volts = 0.0f;
+    float dc_amps = 0.0f;
+    float dc_watts = 0.0f;
+    float ext_battery_volts = 0.0f;
+    int battery_soc = -1;
+    bool has_dc_feedback = false;
+    bool battery_low = false;
     String last_error = "";
 };
 
@@ -119,6 +127,7 @@ public:
         if (doc.containsKey("tolerance_import")) cfg.tolerance_import = doc["tolerance_import"].as<int>();
         if (doc.containsKey("rs485_dere_pin")) cfg.rs485_dere_pin = doc["rs485_dere_pin"].as<int>();
         if (doc.containsKey("sensor_timeout_sec")) cfg.sensor_timeout_sec = doc["sensor_timeout_sec"].as<int>();
+        if (doc.containsKey("min_battery_voltage")) cfg.min_battery_voltage = doc["min_battery_voltage"].as<float>();
         if (doc.containsKey("not_aus")) cfg.not_aus = doc["not_aus"].as<bool>();
 
         if (doc.containsKey("mqtt_server")) cfg.mqtt_server = doc["mqtt_server"].as<String>();
@@ -168,6 +177,7 @@ public:
         doc["tolerance_import"] = cfg.tolerance_import;
         doc["rs485_dere_pin"] = cfg.rs485_dere_pin;
         doc["sensor_timeout_sec"] = cfg.sensor_timeout_sec;
+        doc["min_battery_voltage"] = cfg.min_battery_voltage;
         doc["not_aus"] = cfg.not_aus;
 
         doc["mqtt_server"] = cfg.mqtt_server;

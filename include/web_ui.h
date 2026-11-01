@@ -169,6 +169,9 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         <div id="timeoutBanner" class="notaus-banner" style="background: #fffaf0; color: #c05621; border-color: #dd6b20;">
             ⚠️ SENSOR TIMEOUT! Smartmeter sendet keine Daten mehr. Notabschaltung auf 0W aktiv.
         </div>
+        <div id="batteryBanner" class="notaus-banner" style="background: #fff5f5; color: #e53e3e; border-color: #e53e3e;">
+            ⚠️ UNTERSPANNUNGSSCHUTZ! Akkuspannung liegt unter der Abschaltschwelle. Einspeisung gestoppt (0W).
+        </div>
 
         <!-- Live Power Status -->
         <div class="card">
@@ -187,8 +190,9 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                     <div id="valSoyoCount" class="stat-value">--</div>
                 </div>
             </div>
-            <div style="margin-top: 12px; font-size: 0.85rem; color: #718096; display: flex; justify-content: space-between;">
+            <div style="margin-top: 12px; font-size: 0.85rem; color: #718096; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
                 <span>Phasen: L1: <b id="valL1">--</b> W | L2: <b id="valL2">--</b> W | L3: <b id="valL3">--</b> W</span>
+                <span>Akku: <b id="valDcVolts" style="color: var(--primary);">--</b> V | <b id="valDcAmps">--</b> A | <b id="valDcWatts">--</b> W</span>
                 <span>Uptime: <b id="valUptime">--</b></span>
             </div>
         </div>
@@ -342,6 +346,12 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                         <input type="number" id="cfg_rs485_dere_pin" name="rs485_dere_pin" placeholder="0 für GPIO0/D3, -1 für Auto" value="0">
                     </div>
                 </div>
+                <div class="grid-3" style="margin-top: 10px;">
+                    <div class="form-group">
+                        <label>Min. Akkuspannung (V)</label>
+                        <input type="number" step="0.1" id="cfg_min_battery_voltage" name="min_battery_voltage" placeholder="z.B. 47.0" value="47.0">
+                    </div>
+                </div>
 
                 <div class="grid-2" style="margin-top: 15px;">
                     <button type="submit" class="btn btn-success btn-block">💾 Einstellungen Speichern</button>
@@ -438,12 +448,20 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                     document.getElementById('valL2').innerText = (parseFloat(data.L2) || 0).toFixed(1);
                     document.getElementById('valL3').innerText = (parseFloat(data.L3) || 0).toFixed(1);
 
-                    // NotAus & Timeout State
+                    // NotAus, Timeout & Low-Battery State
                     let isNotAus = (data.NotAus === "1" || data.NotAus === true);
                     document.getElementById('notausBanner').style.display = isNotAus ? "block" : "none";
 
                     let isTimeout = (data.sensor_timeout === true || data.sensor_timeout === "1");
                     document.getElementById('timeoutBanner').style.display = isTimeout ? "block" : "none";
+
+                    let isBattLow = (data.battery_low === true || data.battery_low === "1");
+                    document.getElementById('batteryBanner').style.display = isBattLow ? "block" : "none";
+
+                    // DC Battery values
+                    document.getElementById('valDcVolts').innerText = data.DCVolts || "--";
+                    document.getElementById('valDcAmps').innerText = data.DCAmps || "--";
+                    document.getElementById('valDcWatts').innerText = data.DCWatts || "--";
 
                     // Heartbeat indicator
                     beatState = !beatState;
@@ -488,6 +506,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                     if (data.target_offset !== undefined) document.getElementById('cfg_target_offset').value = data.target_offset;
                     if (data.sensor_timeout_sec !== undefined) document.getElementById('cfg_sensor_timeout_sec').value = data.sensor_timeout_sec;
                     if (data.rs485_dere_pin !== undefined) document.getElementById('cfg_rs485_dere_pin').value = data.rs485_dere_pin;
+                    if (data.min_battery_voltage !== undefined) document.getElementById('cfg_min_battery_voltage').value = data.min_battery_voltage;
 
                     if (data.static_watt !== undefined) {
                         document.getElementById('staticSlider').value = data.static_watt;

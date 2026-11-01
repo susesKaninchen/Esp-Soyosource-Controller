@@ -6,14 +6,16 @@ Quelloffene, moderne C++ Firmware für den **Soyosource GTN 1200** (und baugleic
 
 ---
 
-## Wichtiger Hinweis zu diesem Fork & Urheberschaft
+## Originalprojekt & Urheber-Anerkennung
 
-> [!IMPORTANT]
-> **Klarstellung:** Dieses Repository ist ein unabhängiger Fork des ursprünglichen Projekts von *KlausLi* / *BavarianSuperGuy*.
+> [!NOTE]
+> **Credits an den Original-Entwickler:**
+> Die grundlegende Idee der RS485-Regelung, die Pionierarbeit und die Hardware-Schaltpläne stammen von **KlausLi** bzw. dem YouTuber **BavarianSuperGuy**. Da er die maßgebliche Entwicklungsarbeit geleistet hat, soll seine Arbeit gebührend honoriert werden:
+> - **YouTube-Kanal des Original-Autors:** [BavarianSuperGuy auf YouTube](https://www.youtube.com/c/BavarianSuperGuy)
+> - **Spendenlink an den Original-Autor:** [PayPal-Kaffeekasse für BavarianSuperGuy (BSGuy)](https://paypal.me/BSGuy)
 >
-> Der Betreiber und Maintainer dieses Forks (**susesKaninchen**) ist **NICHT** der YouTuber "BavarianSuperGuy", steht in keiner geschäftlichen oder privaten Verbindung zu dessen YouTube-Kanal und betreibt keinen Spendenaufruf. Sämtliche PayPal-Links und Abonnier-Aufforderungen aus dem ursprünglichen Repository wurden in diesem Fork bewusst entfernt.
->
-> Die ursprüngliche Idee der RS485-Ansteuerung und die Hardware-Schaltpläne basieren auf den Vorarbeiten von *BavarianSuperGuy* und *KlausLi*, wofür ihnen Dank gebührt. Die hier vorliegende Firmware wurde vollständig als offener C++ Quellcode für PlatformIO neu implementiert, um die geschlossenen Binärdateien (`firmware_vX.X.X.X.bin`) abzulösen und volle Transparenz, Wartbarkeit und Erweiterbarkeit zu gewährleisten.
+> **Hinweis zu diesem Fork:**
+> Dieses Repository ist ein reines technisches Open-Source Upgrade von **susesKaninchen**. Der Maintainer dieses Forks ist **nicht** der YouTuber "BavarianSuperGuy", hat lediglich den Quellcode auf PlatformIO modernisiert und nimmt für sich selbstverständlich keinerlei Spenden an.
 
 ---
 
@@ -23,6 +25,10 @@ Quelloffene, moderne C++ Firmware für den **Soyosource GTN 1200** (und baugleic
   - Kein Blind-Flashen von closed-source `.bin`-Dateien mehr.
   - Vollständige Offenlegung des Soyosource RS485-Protokolls (4800 Baud, 8N1, Checksummenalgorithmus).
   - Dual-Target-Unterstützung: Kompiliert out-of-the-box für **ESP8266** (`[env:d1_mini]`) und **ESP32** (`[env:esp32dev]`).
+- **Akkustand-Erkennung & Unterspannungsschutz:**
+  - **RS485-Rückkanal:** Erkennt und decodiert die 10-Byte-Statuspakete des Soyosource (Batteriespannung in Decivolt, Strom in Deciamp und DC-Leistung).
+  - **Home Assistant / Externer BMS-Sync:** Kann Akkuspannung und SoC auch direkt von Home Assistant via MQTT (`Soyosource/cmd/battery_voltage`) oder HTTP (`/Battery?Voltage=...`) empfangen.
+  - **Unterspannungsschutz:** Fällt die Akkuspannung unter den eingestellten Schwellwert (`min_battery_voltage`, z.B. 47.0V), drosselt der Controller die Einspeisung automatisch auf 0 Watt (Schutz vor Tiefentladung).
 - **Echte geschlossene Nulleinspeisungs-Regelung (Closed-Loop):**
   - Asymmetrisches Totband / Hysterese (Standard: `-20W` Netzeinspeisung bis `+5W` Netzbezug) verhindert nervöses Schwingen.
   - Einstellbarer Ziel-Offset (z.B. +10W Netzbezug als Sicherheitspuffer).
@@ -33,17 +39,17 @@ Quelloffene, moderne C++ Firmware für den **Soyosource GTN 1200** (und baugleic
 - **Multi-Inverter Lastverteilung (Soyo-Teiler):**
   - Unterstützt mehrere parallel am selben RS485-Bus betriebene Soyosource-Wechselrichter mit automatischer gleichmäßiger Leistungsteilung.
 - **Home Assistant MQTT Auto-Discovery:**
-  - Bei aktiviertem MQTT-Broker registriert sich der Controller automatisch in Home Assistant mit Sensor-Entities (`Einspeiseleistung`, `Netzbilanz`) und einem steuerbaren `NotAus`-Switch.
+  - Bei aktiviertem MQTT-Broker registriert sich der Controller automatisch in Home Assistant mit Sensor-Entities (`Einspeiseleistung`, `Netzbilanz`, `Batteriespannung`, `DC-Leistung`) und einem steuerbaren `NotAus`-Switch.
 - **Modernes, responsives Web-Dashboard:**
   - Dark-Mode HTML5/CSS3 Oberfläche, optimiert für Desktop und Smartphone.
-  - Live-Herzschlag-Indikator, Live-Leistungskarten (Netz, Soyo-Ausgang, Phasen L1/L2/L3).
+  - Live-Herzschlag-Indikator, Live-Leistungskarten (Netz, Soyo-Ausgang, Phasen L1/L2/L3, Akkuspannung/Strom).
   - Schieberegler für manuelle Leistungsvorgabe mit Sofort-Feedback.
   - Sofortige 0W-NotAus-Abschaltung per Klick.
   - Vollständige Konfiguration (Shelly, MQTT, Tasmota, Regelparameter) direkt im Browser speicherbar.
 - **Web OTA Updater (`/update`):**
   - Firmware-Updates direkt über den Browser ohne USB-Kabel.
 - **Abwärtskompatible REST-API:**
-  - Alle bekannten Endpunkte (`/data`, `/state`, `/L1L2L3Auto`, `/L1L2L3Static`, `/NotAus`, `/MaxPower`, `/SoyoCount`) funktionieren nahtlos weiter.
+  - Alle bekannten Endpunkte (`/data`, `/state`, `/Battery`, `/L1L2L3Auto`, `/L1L2L3Static`, `/NotAus`, `/MaxPower`, `/SoyoCount`) funktionieren nahtlos weiter.
 
 ---
 

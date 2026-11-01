@@ -145,6 +145,16 @@ void handleData() {
     doc["sensor_timeout_sec"] = config.sensor_timeout_sec;
     doc["sensor_timeout"] = config.sensor_timeout;
 
+    // Battery / DC status
+    doc["DCVolts"] = config.has_dc_feedback ? String(config.dc_volts, 1) : (config.ext_battery_volts > 0 ? String(config.ext_battery_volts, 1) : "0.0");
+    doc["DCAmps"] = config.has_dc_feedback ? String(config.dc_amps, 1) : "0.0";
+    doc["DCWatts"] = config.has_dc_feedback ? String(config.dc_watts, 1) : "0.0";
+    doc["min_battery_voltage"] = config.min_battery_voltage;
+    doc["ext_battery_volts"] = config.ext_battery_volts;
+    doc["battery_soc"] = config.battery_soc;
+    doc["battery_low"] = config.battery_low;
+    doc["has_dc_feedback"] = config.has_dc_feedback;
+
     doc["ShellyIP"] = config.shelly_ip;
     doc["S3emPro"] = config.shelly_is_pro ? "1" : "0";
     doc["use_l1"] = config.shelly_l1;
@@ -244,6 +254,7 @@ void handleSave() {
         }
     }
     if (server.hasArg("sensor_timeout_sec")) config.sensor_timeout_sec = constrain(server.arg("sensor_timeout_sec").toInt(), 0, 300);
+    if (server.hasArg("min_battery_voltage")) config.min_battery_voltage = server.arg("min_battery_voltage").toFloat();
 
     if (server.hasArg("shelly_ip")) config.shelly_ip = server.arg("shelly_ip");
     config.shelly_is_pro = (server.arg("shelly_is_pro") == "1");
@@ -274,10 +285,21 @@ void handleRestart() {
     ESP.restart();
 }
 
+void handleBattery() {
+    if (server.hasArg("Voltage")) {
+        config.ext_battery_volts = server.arg("Voltage").toFloat();
+    }
+    if (server.hasArg("SoC")) {
+        config.battery_soc = server.arg("SoC").toInt();
+    }
+    server.send(200, "application/json", "{\"status\":\"ok\",\"volts\":" + String(config.ext_battery_volts) + ",\"soc\":" + String(config.battery_soc) + "}");
+}
+
 void setupWebServer() {
     server.on("/", HTTP_GET, handleRoot);
     server.on("/data", HTTP_GET, handleData);
     server.on("/state", HTTP_GET, handleState);
+    server.on("/Battery", HTTP_GET, handleBattery);
     server.on("/L1L2L3Auto", HTTP_GET, handleL1L2L3Auto);
     server.on("/L1L2L3Static", HTTP_GET, handleL1L2L3Static);
     server.on("/NotAus", HTTP_GET, handleNotAus);
@@ -359,6 +381,40 @@ void publishHomeAssistantDiscovery() {
         serializeJson(doc, buf);
         mqttClient.publish(("homeassistant/switch/" + devId + "_notaus/config").c_str(), buf, true);
     }
+
+    // 4. Battery Voltage sensor
+    {
+        StaticJsonDocument<512> doc;
+        doc["name"] = "Batteriespannung";
+        doc["stat_t"] = config.mqtt_topic_pub;
+        doc["val_tpl"] = "{{ value_json.DCVolts }}";
+        doc["unit_of_meas"] = "V";
+        doc["dev_cla"] = "voltage";
+        doc["stat_cla"] = "measurement";
+        doc["uniq_id"] = devId + "_dc_volts";
+        addDeviceBlock(doc.createNestedObject("dev"));
+
+        char buf[512];
+        serializeJson(doc, buf);
+        mqttClient.publish(("homeassistant/sensor/" + devId + "_dc_volts/config").c_str(), buf, true);
+    }
+
+    // 5. Battery Power sensor
+    {
+        StaticJsonDocument<512> doc;
+        doc["name"] = "DC Leistung";
+        doc["stat_t"] = config.mqtt_topic_pub;
+        doc["val_tpl"] = "{{ value_json.DCWatts }}";
+        doc["unit_of_meas"] = "W";
+        doc["dev_cla"] = "power";
+        doc["stat_cla"] = "measurement";
+        doc["uniq_id"] = devId + "_dc_watts";
+        addDeviceBlock(doc.createNestedObject("dev"));
+
+        char buf[512];
+        serializeJson(doc, buf);
+        mqttClient.publish(("homeassistant/sensor/" + devId + "_dc_watts/config").c_str(), buf, true);
+    }
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
@@ -383,6 +439,10 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
         config.static_watt = atoi(msg);
         config.mode = MODE_STATIC;
         executeRegulation();
+    } else if (strTopic == "Soyosource/cmd/battery_voltage") {
+        config.ext_battery_volts = atof(msg);
+    } else if (strTopic == "Soyosource/cmd/battery_soc") {
+        config.battery_soc = atoi(msg);
     }
 }
 
@@ -514,6 +574,46 @@ void pollCustomJson() {
 }
 
 // ==========================================
+// Serial RX: Receive Soyosource status frames
+// ==========================================
+uint8_t rxBuffer[32];
+size_t rxIndex = 0;
+unsigned long lastRxByteTime = 0;
+
+void handleSerialRx() {
+    while (Serial.available()) {
+        uint8_t b = Serial.read();
+        unsigned long now = millis();
+
+        if (now - lastRxByteTime > 50) {
+            rxIndex = 0;
+        }
+        lastRxByteTime = now;
+
+        if (rxIndex < sizeof(rxBuffer)) {
+            rxBuffer[rxIndex++] = b;
+        } else {
+            rxIndex = 0;
+        }
+
+        if (rxIndex >= 10) {
+            float v = 0.0f, a = 0.0f;
+            uint8_t s = 0;
+            for (size_t offset = 0; offset <= rxIndex - 10; offset++) {
+                if (SoyosourceProtocol::parseStatusFrame(&rxBuffer[offset], 10, v, a, s)) {
+                    config.dc_volts = v;
+                    config.dc_amps = a;
+                    config.dc_watts = v * a;
+                    config.has_dc_feedback = true;
+                    rxIndex = 0;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+// ==========================================
 // Core Soyosource Regulation & RS485 Send
 // ==========================================
 void executeRegulation() {
@@ -561,6 +661,15 @@ void executeRegulation() {
         }
     }
 
+    // Safety priority 3: Battery undervoltage protection
+    float battV = config.has_dc_feedback ? config.dc_volts : config.ext_battery_volts;
+    if (config.min_battery_voltage > 0.0f && battV > 0.0f && battV < config.min_battery_voltage) {
+        config.battery_low = true;
+        targetWatts = 0;
+    } else {
+        config.battery_low = false;
+    }
+
     // Safety clamp to max_power
     targetWatts = constrain(targetWatts, 0, config.max_power);
     config.current_watts_out = targetWatts;
@@ -583,6 +692,11 @@ void publishTelemetry() {
     doc["NotAus"] = config.not_aus;
     doc["Mode"] = config.mode;
     doc["SensorTimeout"] = config.sensor_timeout;
+    doc["DCVolts"] = config.has_dc_feedback ? config.dc_volts : config.ext_battery_volts;
+    doc["DCAmps"] = config.dc_amps;
+    doc["DCWatts"] = config.dc_watts;
+    doc["BatteryLow"] = config.battery_low;
+    doc["BatterySoC"] = config.battery_soc;
     doc["Uptime"] = getUptimeStr();
 
     char buf[512];
@@ -618,6 +732,7 @@ void setup() {
 void loop() {
     server.handleClient();
     handleMQTT();
+    handleSerialRx();
 
     unsigned long now = millis();
 
