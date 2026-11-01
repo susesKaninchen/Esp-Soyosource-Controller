@@ -1,267 +1,169 @@
-<img src="BastelPlan0_ESP8266_Rs485_Modul.png" alt="Soyosource Controller by BavarianSuperGuy"/>
-Explain: SUN1200BSG BluePill <- Codename for SolarAtomicBomb
+# ESP-Soyosource-Controller (Open-Source PlatformIO Fork)
 
-Was nett wäre, Vergesst bitte nicht meinen Kanal zu abonnieren und zu liken ;-) ... wann disliken gut wär, dann das auch :-))
+Quelloffene, moderne C++ Firmware für den **Soyosource GTN 1200** (und baugleiche Grid-Tie-Inverter mit RS485-Limiter-Schnittstelle) auf Basis von **ESP8266** (Wemos D1 Mini / ESP-12) und **ESP32**, entwickelt mit **PlatformIO**.
 
-https://www.youtube.com/c/BavarianSuperGuy
-
-Falls Ihr mich unterstützen wollt, Spenden sind herzlich willkommen und würde mich sehr freuen :-)
-Hier bitte - https://paypal.me/BSGuy
-
-Soyo Film-> https://youtu.be/TAW5yowh12U
-
-Video zu 
-v1.0.2.5 
-Mehrere Soyo 
-mit einem ESP -> https://youtu.be/sVKFAbERqqg
-
-
-
-
-Ich übernehme keine Haftung für Schäden, die aufgrund der Nutzung 
-der Software entstehen oder entstanden sind. 
-Jeder ist für sein tun selber verantwortlich.
-Mir sind keine Probleme bekannt.
-
-Vorab zum ESP8266 ein Hinweis!
-zu 100% Lauffähig ist die hier eingestellte Software mit einem ESP12 Modul!
-Dieses ESP12 Modul gibt es als e,f oder s Variante.
-Diese haben immer ein Abschirmblech verbaut und haben 4MByte(32Mbit) Ram!
-In der Regel haben D1 minis oder NodeMcu Platinen das ESP12 Modul verbaut!
-Diese funktionieren in der Regel auch gut aber die usbserial programmiereinrichtung 
-die mit auf der platine zum ESP12 Modul verbaut wird , ist teils oer meist störanfällig!
-Diese z.B. ch340 verbauten IC sind mit dem rx/tx des esp8266 im ESP12 Modul verbunden.
-Die Entkopplung von RX/TX ist den D1/Node Platinen Herstellern nicht immer gelungen!
-
-
-
-GANZ UNTEN IST DAS ANSCHLUSSSCHEMA (Bastelplan3000)
-
-3 Dinge sind wichtig für die Umsetzung dieses Projekts:
-- 3,3V
-- Guter Wlan Empfang(Keine Leerzeichen in der SSID vom Router)
-- Readme vollstandig lesen, dann nochmal
-wann readme gelesen wurde und ihr daraufhin gemerkt habt
-aufgrund der Methode die beschrieben wird ,
-der wlan empfang ist schlecht und lässt sich nicht ändern
-
-... https://www.google.com/search?q=esp8266+antennenhack
-
-ich kann keinen besseren Empfang programmiern!
-und der esp kann auch nix anderes machen 
-wann er ständig versucht sich  ins Wlan einzuloggen
-
-
-Internet Explorer wird nicht unterstützt!(die kochen wieder eigenes Sueppchen bei Slider funktion)
-
-<img src="Soyosource.png" alt="Soyosource Controller by BavarianSuperGuy"/>
-<img src="Soyosource_ohne_display.png" alt="Soyosource Controller by BavarianSuperGuy"/>
-
-
-
-# EspSoyosourceController (Open-Source PlatformIO Edition)
-
-Dieses Repository enthält den vollständig re-engineerten, quelloffenen C++ Quellcode des Soyosource Controllers für **PlatformIO**. Er ersetzt die bisherige closed-source Firmware-Binärdatei durch ein sauberes, erweiterbares Projekt mit moderner, responsiver Web-Oberfläche.
-
-### Highlights & Neuerungen:
-- **100% Quelloffen (C++ / PlatformIO):** Vollständige Offenlegung des Soyosource RS485-Protokolls (4800 Baud, 8N1, Checksummenberechnung).
-- **Multi-Plattform:** Unterstützt sowohl **ESP8266** (`d1_mini`) als auch **ESP32** (`esp32dev`).
-- **Modernes Web-Dashboard:**
-  - Responsive HTML5/CSS3 Oberfläche mit Dark-Mode-Optik.
-  - Live-Pulsierender Herzschlag-Indikator, Live-Leistungskarten (Netz, Einspeisung, Limiter, Toleranzbereich).
-  - Interaktiver Schieberegler für manuelle Leistungsvorgabe mit Sofort-Feedback.
-  - NotAus-Schalter mit sofortiger 0W-Sicherheitsabschaltung.
-  - Dynamische Konfigurationsbereiche für Shelly (Gen1 3EM & Gen2 Pro 3EM RPC), MQTT und JSON-Endpunkte (z.B. Tasmota IR-Lesekopf).
-- **Web OTA Updater:** Firmware-Aktualisierung direkt über den Browser unter `http://<IP>/update` ohne USB-Kabel.
-- **Konfigurations-Speicher:** Alle Einstellungen werden persistent im Flash per `LittleFS` (`/config.json`) gesichert.
-- **Abwärtskompatible REST-API:** Alle bestehenden Endpunkte (`/data`, `/state`, `/L1L2L3Auto`, `/NotAus`, `/MaxPower`, etc.) werden 1:1 unterstützt.
-
-### Kompilieren & Flashen mit PlatformIO:
-```bash
-# Bauen für ESP8266 (D1 Mini / ESP-12F)
-pio run -e d1_mini
-
-# Per USB flashen
-pio run -e d1_mini -t upload
-
-# Bauen für ESP32
-pio run -e esp32dev
-```
-
-### Web-OTA-Update (ohne USB):
-1. In PlatformIO kompilieren: `pio run -e d1_mini`
-2. Im Browser `http://<IP-des-ESP>/update` öffnen
-3. Die Datei `.pio/build/d1_mini/firmware.bin` auswählen und hochladen
+<img src="BastelPlan3000_Soyosource_Controller_by_BavarianSuperGuy.png" alt="Soyosource Controller Anschlussplan" width="800"/>
 
 ---
 
-# EspSoyosourceController mit Webseite (Original-Dokumentation)
-Der Esp8266 ist über ein Rs485 Modul mit dem Soyosource 1200 Solar/Batterie Wechselrichter verbunden und kann diesem die Leistungswerte senden die er im Stromnetz ausgleichen/einspeisen soll. 
-ManualMode: Der Leistungswert kann auf der Esp Webseite eingegeben und gesendet werden. 
-AutoMode: Der Esp empfängt über Mqtt Topic oder WebInterface den LeistungsWert (z.B. der Wert einer Messeinrichtung über die 3 Phasen)
-der gewünschten zu regelnden Leistung und regelt den Soyosource automatisch.
+## Wichtiger Hinweis zu diesem Fork & Urheberschaft
 
-Kurzum die Firmware die es hier zum Download gibt, ersetzt den Limiter.
+> [!IMPORTANT]
+> **Klarstellung:** Dieses Repository ist ein unabhängiger Fork des ursprünglichen Projekts von *KlausLi* / *BavarianSuperGuy*.
+>
+> Der Betreiber und Maintainer dieses Forks (**susesKaninchen**) ist **NICHT** der YouTuber "BavarianSuperGuy", steht in keiner geschäftlichen oder privaten Verbindung zu dessen YouTube-Kanal und betreibt keinen Spendenaufruf. Sämtliche PayPal-Links und Abonnier-Aufforderungen aus dem ursprünglichen Repository wurden in diesem Fork bewusst entfernt.
+>
+> Die ursprüngliche Idee der RS485-Ansteuerung und die Hardware-Schaltpläne basieren auf den Vorarbeiten von *BavarianSuperGuy* und *KlausLi*, wofür ihnen Dank gebührt. Die hier vorliegende Firmware wurde vollständig als offener C++ Quellcode für PlatformIO neu implementiert, um die geschlossenen Binärdateien (`firmware_vX.X.X.X.bin`) abzulösen und volle Transparenz, Wartbarkeit und Erweiterbarkeit zu gewährleisten.
 
-Die Firmware(firmware_vX.X.X.X.bin") ist im Verzeichnis espflasher.
-Diese kann unkompliziert auf einen 4Mbyte Esp mit dem im Verzeichnis enhaltenen
-Tool "FlashESP8266.exe" geflasht werden. 
-Dieses Tool FlashESP8266.exe ist nicht von mir , aber hat schon hevorragende Dienste geleistet.
-Es kann natürlich auch z.B. das Tasmotizer Firmware flash Tool zum aufspielen benutzt werden.
-(Tasmotizer: Erase Checkbox nicht vergessen vor dem ersten flashen anzuhaken)
+---
 
-<img src="Webseite SOYOSOURCE Controller.png" alt="Soyosource Controller by BavarianSuperGuy"/>
+## Highlights & Features
 
-Was kann der ESP8266 Soyosource Controller :
+- **100% Open Source (C++ / PlatformIO):**
+  - Kein Blind-Flashen von closed-source `.bin`-Dateien mehr.
+  - Vollständige Offenlegung des Soyosource RS485-Protokolls (4800 Baud, 8N1, Checksummenalgorithmus).
+  - Dual-Target-Unterstützung: Kompiliert out-of-the-box für **ESP8266** (`[env:d1_mini]`) und **ESP32** (`[env:esp32dev]`).
+- **Echte geschlossene Nulleinspeisungs-Regelung (Closed-Loop):**
+  - Asymmetrisches Totband / Hysterese (Standard: `-20W` Netzeinspeisung bis `+5W` Netzbezug) verhindert nervöses Schwingen.
+  - Einstellbarer Ziel-Offset (z.B. +10W Netzbezug als Sicherheitspuffer).
+- **Sensor-Watchdog (Failsafe-Sicherheitsabschaltung):**
+  - Fällt das Smartmeter (Shelly, MQTT, Tasmota oder HTTP) länger als 30 Sekunden aus, drosselt der Controller die Einspeisung sofort auf **0 Watt** herunter. Schutz vor ungewollter Akkuentleerung ins öffentliche Netz bei WLAN- oder Sensorstörungen.
+- **Hardware RS485 DE/RE Steuerung:**
+  - Unterstützt sowohl automatische Transceiver (nur TX/RX) als auch klassische MAX485-Module mit DE/RE-Pin an GPIO0 (D3 auf D1 Mini) oder frei konfigurierbarem Pin.
+- **Multi-Inverter Lastverteilung (Soyo-Teiler):**
+  - Unterstützt mehrere parallel am selben RS485-Bus betriebene Soyosource-Wechselrichter mit automatischer gleichmäßiger Leistungsteilung.
+- **Home Assistant MQTT Auto-Discovery:**
+  - Bei aktiviertem MQTT-Broker registriert sich der Controller automatisch in Home Assistant mit Sensor-Entities (`Einspeiseleistung`, `Netzbilanz`) und einem steuerbaren `NotAus`-Switch.
+- **Modernes, responsives Web-Dashboard:**
+  - Dark-Mode HTML5/CSS3 Oberfläche, optimiert für Desktop und Smartphone.
+  - Live-Herzschlag-Indikator, Live-Leistungskarten (Netz, Soyo-Ausgang, Phasen L1/L2/L3).
+  - Schieberegler für manuelle Leistungsvorgabe mit Sofort-Feedback.
+  - Sofortige 0W-NotAus-Abschaltung per Klick.
+  - Vollständige Konfiguration (Shelly, MQTT, Tasmota, Regelparameter) direkt im Browser speicherbar.
+- **Web OTA Updater (`/update`):**
+  - Firmware-Updates direkt über den Browser ohne USB-Kabel.
+- **Abwärtskompatible REST-API:**
+  - Alle bekannten Endpunkte (`/data`, `/state`, `/L1L2L3Auto`, `/L1L2L3Static`, `/NotAus`, `/MaxPower`, `/SoyoCount`) funktionieren nahtlos weiter.
 
-- annähernd Nulleinspeisung
+---
 
-Grundlegend ist FAKT: wann der SOYO Wechselrichter keine Signale über Rs485 gesendet bekommt hört er auf einzuspeisen(Safety)!
+## Hardware & Verkabelung
 
-- Der Esp nimmt die Leistung die er Regeln soll über Mqtt und Webschnittstelle auf.
-- Zu übergebenes Zahlenformat 200 oder 200.00
-- Der ESP nimmt die Leistung an und übergibt Sie dem Soyo , danach ist eine 3Sekunden Pause
-- Erst dann wird der zuletzt empfangene Leistungswert dem Soyo übergeben dann wieder 3 sekunden Pause...
-- Damit geschieht eine saubere einpendelung gegen ~0watt Verbrauch bzw. er regelt sich in einen vorgegebenen Toleranzbereich ein.
-- In der ESP Web Seite(Ipaddresse des Esp im Browser eingeben) kann man per Button die Einspeisung beenden(Notaus), schicke explizit 0watt an SOYO , geht schneller als zu warten bis er selbst beendet da er anschliessend auch keine Signale mehr bekommt.
-- In der Web Seite kann man per Button die maximale Einspeiseleistung eingestellt werden(MaxPower)
-- Die blinkende Überschrift in der Webseite ist ein Alive zeichen , solange die Überschrift "ESP Herzschlag" blinkt , ist alles gut
+<img src="BastelPlan0_ESP8266_Rs485_Modul.png" alt="ESP8266 RS485 Modul" width="500"/>
 
-- Wann der Soyosource einspeisst , blinkt die DCZeile in der Esp Webseite
-ACHTUNG : seit einiger Zeit gibt es Geräte , die keine Status Daten über rs485 auf gewohntem Weg zurückgeben 
-Hier blinkt die DC Zeile nicht und es wird auch nichts angezeigt in dieser Zeile 
-aber die Regelung der Null-Einspeisung funktioniert trotzdem!
+### Soyosource RS485-Schnittstelle
+- **Baudrate:** 4800 Baud, 8 Datenbits, keine Parität, 1 Stoppbit (8N1).
+- **Anschluss:** Klemme **A** des RS485-Adapters an **A** des Soyosource, Klemme **B** an **B**.
+- **Sicherheitsprinzip:** Erhält der Soyosource keine gültigen RS485-Pakete mehr, stoppt er die Einspeisung nach kurzer Zeit selbstständig.
 
-- Derzeit pendelt der Esp sich im Toleranz Bereich -20 |0| +5 Watt ein , geplant ist die Toleranzwerte einzustellen zu können wann jemand gar keine -watts(Einspeisung ins Netz) sehen will.
-- Anzeige der Wlan Signalstärke in der Webseite, je näher an 0 desto besser ist das Signal, z.B. 75 is grenzwertig OK 
-(RSSI wird nicht aktualisiert, für aktuellen Wert, F5 im Browser drücken)
-- Doppelreset implementierung um wieder ins Configportal im eigenen Esp AP zu kommen
-- ElegantOta Implementierung für FirmwareUpdates 
-(Für UPDATE: Wann der ESP in Betriebsart Httpclient eingestellt ist , vor update auf eine ruhige zone einstellen z.B. statisch Mqtt
-nach Update dann wieder zurückstellen und Übernehmen)
-- Betriebs Modi's:
- Auto HttpInterface
- Auto Mqtt
- Auto HttpClient(Shelly3M) mit Angabe ShellyIpAddresse greift auf die api "http://xxx.xxx.xxx.xxx/emeter/0 -2" zu
- bzw. jenachdem welche Phasen (L1-L3) ausgewählt wurden
- Static HttpInterface und WebGui
- Auto Subscribe L1L2L3 Mqtt(wann man schon ein smartmeter mqtt publish Topic hat, kann man das hier eintragen)
- - Alle Interface's funktionieren weiterhin , jedoch wird der Wert nur von der ausgewählten Betriebsart und dessen Interface ausgewertet
- - ########## Deaktiviert ##########
- - NULL Punkt Einstellung - wann keine "reine" ~null~ einspeisung gewünscht kann bis zu
-  - ########## Deaktiviert ##########
-- 150watt verbrauch stehengelassen werden
- - Update 19.10.2021 13:41 NULL Punkt Einstellung hat noch nen Denkfehler drin (in Std Einstellung funktioniert alles wie gewohnt)
- - Update 19.10.2021 15:11 Denkfehler mit 1 Bier  in Version 1.0.1.7 behoben 
-- Update 18.3.2022 v1.0.25  SollwertTeiler hinzugefügt , es können nun mehrere Soyos parallel an ein rs485 Modul angeschlossen werden und muss mit Soyo Button unter Sollwert Teiler eingestellt und gespeichert werden(SAVE Controller). Damit wird die and den ESP übergebene Leistung zu gleichen teilen an die angeschlossenen Soyos verteilt .
-- Wann mehr als 1 Soyo eingestellt wird, ist die DC Zeile(blinkt im regelbetrieb) stillgelegt, dies wird mit "S>1" (Soyo grösser 1) in den werten dargestellt. 
-- Update 29.04.2022 v1.0.2.7 neue Betriebsart "Auto JsonHtpClient" , Liest den Verbrauchswert von einem Json aus ,mit eingabefeldern, da gibst du an:
- 1. Http Get Url : http://192.168.2.237/cm?cmnd=status+10  (z.B. Tasmota SML Reader)
- 2. Json Value Path : StatusSNS.SML.DJ_TPWRCURR   (Die Json Objekte müssen in der schreibweise mit punkt getrennt werden)
- #####
- Die JSON Objekte stammen aus diesem JSON das aus Tasmota SML von einem Zähler Lesekopf generiert wird !
- {"StatusSNS":{"Time":"2022-04-28T14:01:19","SML":{"DJ_TPWRIN":1972.69,"DJ_TPWROUT":96.98,"DJ_TPWRCURR":2357.00,"Meter_number":"0901454d4800009c86bf"},"ESP32":{"Temperature":53.3},"Verbrauch Tag":"2.98","Verbrauch Monat":"146.13","Verbrauch Jahr":"1972.69","Einspeisung Tag":"0.14","ZÃ¤hlerstand 0:00Uhr":"1969.71","ZÃ¤hlerstand Monatsanfang":"1826.56","ZÃ¤hlerstand Jahrenanfang":"0.00","Kosten dieses Jahr":"567.42","TempUnit":"C"}}
- #####
- 
- - Update 29.04.2023 1.0.3.3 Shelly3em Pro Unterstütung  
- nach Schriftzug "Auto HttpClient(Shelly3EM) Pro" die checkbox aktivieren und Save klicken!  
- Falls man die Ip Adresse nicht auf statisch im Router fixiert hat,  
- wird nach diesem Update ne neue Ip geben
- 
- 
- - That's the one: uniGalaktische Version
- 
- Wann in den blauen Bereichen was geändert wird muss es mit "Save Controller"  übernommen werden.
-- Ein Restart nach Save Controller ist nur bei Betriebsart änderung erforderlich, schadet aber generell, daß zu tun, nix!
-- ...
+### RS485 TTL-Adapter-Varianten
+1. **Automatisches Modul (nur RX / TX):**
+   - VCC an 3.3V, GND an GND.
+   - Modul TX an ESP TX (GPIO1), Modul RX an ESP RX (GPIO3).
+   - In den Einstellungen `RS485 DE/RE Pin` auf `-1` setzen.
+2. **Klassisches MAX485-Modul (DI / DE / RE / RO):**
+   - VCC an 3.3V, GND an GND.
+   - DI (Driver Input) an ESP TX (GPIO1).
+   - RO (Receiver Output) an ESP RX (GPIO3).
+   - DE und RE brücken und an ESP **GPIO0** (Pin D3 beim Wemos D1 Mini) anschließen.
+   - In den Einstellungen `RS485 DE/RE Pin` auf `0` belassen.
 
+<img src="rs485.png" alt="MAX485 DI DE RE RO" width="350"/> <img src="rs485_2 .png" alt="RS485 Auto Module" width="350"/>
 
+---
 
+## Kompilieren & Flashen (PlatformIO)
 
-RS485 ttl Adapter (2 verschiedene getestet)
-- rs485 adapter A an A von Soyo anschliessen und B an B
+Das Projekt nutzt [PlatformIO](https://platformio.org/).
 
-<img src="rs485.png" alt="Soyosource Controller by BavarianSuperGuy"/>
-- Beim "DI DE RE RO" Rs485 Modul
-werden die mittleren Rs485 Pins "DE RE" auf einen Pin gebrückt an Esp GPIO0 angeschlossen.
-Dann Rs485 "DI" auf Esp TX  und Rs485 "RO" auf Esp RX 
+### 1. Per USB-Kabel flashen
+```bash
+# In das Projektverzeichnis wechseln
+cd C:\Users\mgabr\Desktop\GitProjekte\Esp-Soyosource-Controller
 
-<img src="rs485_2 .png" alt="Soyosource Controller by BavarianSuperGuy"/>
-- Beim RX TX Rs485 Modul
-wird der Rs485 TX mit Esp TX verbunden und Rs485 RX mit Esp RX verbunden , also nicht kreuzen!
+# Für Wemos D1 Mini / ESP8266 kompilieren und per USB aufspielen
+pio run -e d1_mini -t upload
 
-!Vcc ist bei beiden Modulen 3.3volt!
+# Für ESP32 kompilieren und per USB aufspielen
+pio run -e esp32dev -t upload
+```
 
-Keinen USB/TTL Adapter als 3,3v Poduktiv Stromquelle verwenden, für erstflashen is es OK!
+### 2. Kabellos per Web OTA aktualisieren
+Wenn auf dem ESP bereits diese Firmware läuft:
+1. Projekt kompilieren: `pio run -e d1_mini`
+2. Im Browser `http://<IP-des-Controllers>/update` aufrufen.
+3. Die erzeugte Binärdatei `.pio/build/d1_mini/firmware.bin` auswählen und auf **Update** klicken.
 
-ESP:
+---
 
-EINRICHTUNG##############################################################################################
-- 0.Bei Nutzung von Mqtt: Mqtt.fx Client öffnen mit Broker verbinden und Topic : 'Soyosource/#' abonnieren
-- 0.1 Es kommt nach Schritt 8. ein Info Publish vom Esp mit der IP adresse.
-- 0.2 Man kann die Ip Adresse nat. auch auf dem herkömmlichen Weg herausfinden
-- 1.Firmware auf den gelöschten Esp8266 flashen
-- 2.Esp Neustart
-- 3.Im Wlan nach SOYO_... suchen
-- 4.Wlan mit Passwort 12345678 verbinden
-- 5.Es öffnet sich automatisch Browser Fenster mit 192.168.4.1
-- 6.Unter Configuration
-- 6.1 Wifi auswählen oder eingeben und Passwort eingeben
-- 6.2 Mqtt kann derzeit nur ohne ssl und seit Version 1.0.1.1 mit  Benutzer/Passwort benutzt werden
-- 7.Speichern mit dem Button ganz unten
-- 8.Esp Neustart
-- 9.Ipadresse in Mqtt Client oder Router ausfindig machen
-EINRICHTUNG#############################################################################################
+## Erstinbetriebnahme & WLAN
 
-INBETRIEBNAHME##########################################################################################
-- 1.Ipaddresse im browser aufrufen
-- 2.L1L2L3 Topic von geöffneter Webseite in deinen iobroker/nodered ... übernehmen
-ODER wann Nutzung von Mqtt aus ist :
-- 3.IPADRESS:80/L1L2L3Auto?Value=200.66
-- 3.1 IPADRESS durch die ip vom ESP ersetzen, 200.66 stellt den kummulierten Wert deiner 2/3 phasen da
-- 4 Bei Shelly3em Betriebsart , dei Betriebsart im blauen Bereich auswählen und die IpAdresse vom Shelly angeben
-	anschliessend auf Übernehmen klicken 
-INBETRIEBNAHME##########################################################################################
+1. Nach dem ersten Start spannt der ESP ein eigenes WLAN auf:
+   - **SSID:** `SOYO_<CHIPID>` (z.B. `SOYO_1A2B3C`)
+   - **Passwort:** `12345678`
+2. Mit dem Smartphone oder PC mit dem WLAN verbinden und im Browser `http://192.168.4.1/` öffnen.
+3. Unter **Konfiguration** das eigene Heim-WLAN auswählen und das Passwort eingeben.
+4. Nach dem Speichern und Neustart ist der Controller unter seiner neuen Heimnetz-IP im Browser erreichbar.
 
-CONFIGPORTAL############################################################################################
-Um im Nachhinein wieder ins Configportal zu kommen um die Wlan und Mqtt Daten zu ändern muss der 
-- Pin RST vom ESP innerhalb 10sekunden 2X auf GND getippt werden
-- Anwendungsbispiel: Taster 2mal hintereinander drücken
-Daraufhin startet der ESP neu ins Configportal(EINRICHTUNG Punkt 3) , dort trägt man dann alle Daten neu ein, die fehlen
-und klickt auf Save (Button ganz unten)
-CONFIGPORTAL############################################################################################
+---
 
-Tip:
--  nur leistungsdaten über L1L2L3 (egal welches Interface) senden
-wann sich was geändert hat ! Der esp ansich schickt schon jede sekunde den zuletzt angenommenen Wert.
+## Betriebsmodi
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+Die Betriebsart wird im Web-Dashboard gewählt:
 
-Allgemeiner Hinweis : als L1L2L3 Wert wird ein numerischer Wert wie z.B. 200.66 
-oder -200.66 erwartet (Dezimaltrenner ist punkt) und muss immer den reelen/aktuellen Verbrauch darstellen!
- z.B. L1L2L3 = L1(100)+L2(200)+L3(-300) =0
- 
- 0 wird übergeben!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1. **Auto Shelly 3EM / Pro 3EM (Modus 1):**
+   - IP-Adresse des Shelly im Netzwerk eintragen.
+   - Für Shelly Pro 3EM (Gen2) die Checkbox `Shelly Pro 3EM (RPC)` aktivieren.
+   - Phasen L1, L2, L3 auswählen (Standard: alle drei). Der Controller summiert die Phasen automatisch und regelt auf Nulleinspeisung.
+2. **Auto MQTT (Modus 0):**
+   - Broker-IP, Port, optional Benutzer/Passwort eintragen.
+   - Subscription-Topic für die Netzleistung eintragen (z.B. `tele/tasmota/SENSOR` oder ein Home-Assistant-Topic).
+   - Der Controller liest den aktuellen Watt-Wert ein und regelt nach.
+3. **Auto Custom JSON HTTP (Modus 2):**
+   - HTTP GET URL angeben (z.B. `http://192.168.1.141/cm?cmnd=status+10` für Tasmota IR-Lesekopf).
+   - JSON-Pfad in Punkt-Notation eintragen (z.B. `StatusSNS.SML.DJ_TPWRCURR`).
+4. **Auto HTTP-Interface (Modus 3):**
+   - Externe Systeme (z.B. ioBroker, Node-RED) senden den Zählerwert per HTTP-Request an den Controller:
+     `GET http://<IP>/L1L2L3Auto?Value=250.5`
+5. **Manuell / Statisch (Modus 4):**
+   - Feste Watt-Vorgabe über den Schieberegler im Web-Dashboard oder per HTTP:
+     `GET http://<IP>/L1L2L3Static?Value=300`
 
-- 1.Mqtt L1L2L3 Publish Setting : Qos0 (fire & forget)
-- 2.Wenn WebInterface L1L2L3Auto?Value=200.66... genutzt wird dann schon alle sekunden senden
+---
 
-########################################################################
+## REST-API Referenz
 
-END HINWEIS(NICHT nur die harten, kommen in den Garten) :
+| Endpunkt | Methode | Beschreibung | Beispiel |
+| :--- | :--- | :--- | :--- |
+| `/` | `GET` | Web-Dashboard (HTML5/CSS3) | `http://<IP>/` |
+| `/data` | `GET` | Alle Live-Werte und Konfigurationsdaten als JSON | `http://<IP>/data` |
+| `/state` | `GET` | Kompakte Text-Statuszeile (`WattsOut:X,Grid:Y,NotAus:Z`) | `http://<IP>/state` |
+| `/L1L2L3Auto?Value=...` | `GET` | Übergibt Zählerwert (W) für automatische Regelung | `/L1L2L3Auto?Value=180.5` |
+| `/L1L2L3Static?Value=...` | `GET` | Setzt feste Einspeiseleistung (Handbetrieb) | `/L1L2L3Static?Value=350` |
+| `/NotAus` | `GET` | Aktiviert NotAus (Sofort 0 Watt Einspeisung) | `/NotAus` |
+| `/NotAusAus` | `GET` | Hebt NotAus wieder auf | `/NotAusAus` |
+| `/MaxPower?Value=...` | `GET` | Setzt die maximale Einspeisegrenze in Watt | `/MaxPower?Value=850` |
+| `/SoyoCount?Value=...` | `GET` | Setzt die Anzahl parallel geschalteter Inverter | `/SoyoCount?Value=2` |
+| `/save` | `POST` | Speichert Konfiguration in LittleFS Flash | Form-POST |
+| `/restart` | `GET` | Löst einen Software-Neustart des ESP aus | `/restart` |
+| `/update` | `GET/POST` | Web-OTA Firmware-Updater | `http://<IP>/update` |
 
-Wann du von L1 L2 oder L3 nichts wissen willst oder sowieso GENERAL die Schnauze voll hast 
-- Kauf dir nen shelly3em
-- Bau ihn oder lass ihn fachmännisch im HAK einbauen
-- In der Esp Web Gui wählst du shelly client
-- In der Esp Web Gui gibst du die IP Adresse vom shelly3em ein
-- In der Esp Web Gui drückst du noch auf übernehmen und restart
+---
 
-und schon wirds wieder RUHIG im DachstÜbchen! :-)
-Zeit fürs Bier gewonnen!
+## Home Assistant Integration
 
-###################################################################+####
+### 1. MQTT Auto-Discovery
+Wenn ein MQTT-Broker konfiguriert ist, meldet sich der Controller selbstständig bei Home Assistant an. Unter *Einstellungen -> Geräte & Dienste -> MQTT* erscheint das Gerät **Soyosource Controller** mit folgenden Entitäten:
+- `sensor.soyosource_controller_einspeiseleistung` (W)
+- `sensor.soyosource_controller_netzbilanz` (W)
+- `switch.soyosource_controller_notaus` (NotAus Schalter)
 
+### 2. Manuelle MQTT-Befehle
+- **NotAus schalten:** Topic `Soyosource/cmd/notaus` mit Payload `ON` oder `OFF`.
+- **Feste Wattzahl vorgeben:** Topic `Soyosource/cmd/static_watt` mit Payload z.B. `400`.
 
-<img src="BastelPlan3000_Soyosource_Controller_by_BavarianSuperGuy.png" alt="Soyosource Controller by BavarianSuperGuy"/>
+---
+
+## Lizenz & Haftungsausschluss
+
+Dieses Projekt wird ohne jede Gewährleistung im Ist-Zustand bereitgestellt. Der Betrieb netzparalleler Wechselrichter und Batteriespeicher unterliegt den jeweils geltenden technischen und gesetzlichen Bestimmungen (VDE, TAB, etc.). Jeder Anwender handelt eigenverantwortlich.

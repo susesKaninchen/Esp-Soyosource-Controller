@@ -119,11 +119,7 @@ void handleData() {
 
     doc["Version"] = "1.0.4-opensource";
     doc["ControllerName"] = config.controller_name;
-    #if defined(ESP8266)
-    doc["SOYOID"] = "SOYO_" + String(ESP.getChipId(), HEX);
-    #else
-    doc["SOYOID"] = "SOYO_" + String((uint32_t)ESP.getEfuseMac(), HEX);
-    #endif
+    doc["SOYOID"] = "SOYO_" + String(getDeviceChipId(), HEX);
     doc["WIFI_RSSI"] = (WiFi.status() == WL_CONNECTED) ? String(WiFi.RSSI()) : "N/A";
     doc["WIFI_SSID"] = (WiFi.status() == WL_CONNECTED) ? WiFi.SSID() : "AP-Mode";
     doc["IP"] = (WiFi.status() == WL_CONNECTED) ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
@@ -143,6 +139,11 @@ void handleData() {
     doc["static_watt"] = config.static_watt;
     doc["deadband"] = config.deadband;
     doc["target_offset"] = config.target_offset;
+    doc["tolerance_export"] = config.tolerance_export;
+    doc["tolerance_import"] = config.tolerance_import;
+    doc["rs485_dere_pin"] = config.rs485_dere_pin;
+    doc["sensor_timeout_sec"] = config.sensor_timeout_sec;
+    doc["sensor_timeout"] = config.sensor_timeout;
 
     doc["ShellyIP"] = config.shelly_ip;
     doc["S3emPro"] = config.shelly_is_pro ? "1" : "0";
@@ -174,6 +175,8 @@ void handleState() {
 void handleL1L2L3Auto() {
     if (server.hasArg("Value")) {
         config.current_grid_power = server.arg("Value").toFloat();
+        config.last_sensor_time = millis();
+        config.sensor_timeout = false;
         config.mode = MODE_AUTO_HTTP;
         executeRegulation();
         server.send(200, "application/json", "{\"status\":\"ok\",\"value\":" + String(config.current_grid_power) + "}");
@@ -231,6 +234,16 @@ void handleSave() {
     if (server.hasArg("wait_seconds")) config.wait_seconds = constrain(server.arg("wait_seconds").toInt(), 1, 10);
     if (server.hasArg("deadband")) config.deadband = constrain(server.arg("deadband").toInt(), 0, 100);
     if (server.hasArg("target_offset")) config.target_offset = server.arg("target_offset").toInt();
+    if (server.hasArg("tolerance_export")) config.tolerance_export = server.arg("tolerance_export").toInt();
+    if (server.hasArg("tolerance_import")) config.tolerance_import = server.arg("tolerance_import").toInt();
+    if (server.hasArg("rs485_dere_pin")) {
+        config.rs485_dere_pin = server.arg("rs485_dere_pin").toInt();
+        if (config.rs485_dere_pin >= 0) {
+            pinMode(config.rs485_dere_pin, OUTPUT);
+            digitalWrite(config.rs485_dere_pin, LOW);
+        }
+    }
+    if (server.hasArg("sensor_timeout_sec")) config.sensor_timeout_sec = constrain(server.arg("sensor_timeout_sec").toInt(), 0, 300);
 
     if (server.hasArg("shelly_ip")) config.shelly_ip = server.arg("shelly_ip");
     config.shelly_is_pro = (server.arg("shelly_is_pro") == "1");
@@ -282,16 +295,94 @@ void setupWebServer() {
 }
 
 // ==========================================
-// MQTT Handling
+// MQTT Handling & Home Assistant Auto-Discovery
 // ==========================================
+void publishHomeAssistantDiscovery() {
+    String chipId = String(getDeviceChipId(), HEX);
+    String devId = "soyo_" + chipId;
+
+    auto addDeviceBlock = [&](JsonObject dev) {
+        JsonArray ids = dev.createNestedArray("ids");
+        ids.add(devId);
+        dev["name"] = config.controller_name;
+        dev["mf"] = "susesKaninchen";
+        dev["mdl"] = "Soyosource Controller";
+        dev["sw"] = "1.0.4-opensource";
+    };
+
+    // 1. WattsOut sensor
+    {
+        StaticJsonDocument<512> doc;
+        doc["name"] = "Einspeiseleistung";
+        doc["stat_t"] = config.mqtt_topic_pub;
+        doc["val_tpl"] = "{{ value_json.WattsOut }}";
+        doc["unit_of_meas"] = "W";
+        doc["dev_cla"] = "power";
+        doc["stat_cla"] = "measurement";
+        doc["uniq_id"] = devId + "_watts_out";
+        addDeviceBlock(doc.createNestedObject("dev"));
+
+        char buf[512];
+        serializeJson(doc, buf);
+        mqttClient.publish(("homeassistant/sensor/" + devId + "_watts/config").c_str(), buf, true);
+    }
+
+    // 2. Grid Power sensor (L1L2L3)
+    {
+        StaticJsonDocument<512> doc;
+        doc["name"] = "Netzbilanz";
+        doc["stat_t"] = config.mqtt_topic_pub;
+        doc["val_tpl"] = "{{ value_json.L1L2L3 }}";
+        doc["unit_of_meas"] = "W";
+        doc["dev_cla"] = "power";
+        doc["stat_cla"] = "measurement";
+        doc["uniq_id"] = devId + "_grid";
+        addDeviceBlock(doc.createNestedObject("dev"));
+
+        char buf[512];
+        serializeJson(doc, buf);
+        mqttClient.publish(("homeassistant/sensor/" + devId + "_grid/config").c_str(), buf, true);
+    }
+
+    // 3. NotAus Switch
+    {
+        StaticJsonDocument<512> doc;
+        doc["name"] = "NotAus";
+        doc["cmd_t"] = "Soyosource/cmd/notaus";
+        doc["stat_t"] = config.mqtt_topic_pub;
+        doc["val_tpl"] = "{{ 'ON' if value_json.NotAus else 'OFF' }}";
+        doc["uniq_id"] = devId + "_notaus";
+        doc["icon"] = "mdi:alert-octagon";
+        addDeviceBlock(doc.createNestedObject("dev"));
+
+        char buf[512];
+        serializeJson(doc, buf);
+        mqttClient.publish(("homeassistant/switch/" + devId + "_notaus/config").c_str(), buf, true);
+    }
+}
+
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
     char msg[64];
     if (length >= sizeof(msg)) length = sizeof(msg) - 1;
     memcpy(msg, payload, length);
     msg[length] = '\0';
 
-    if (String(topic) == config.mqtt_topic_sub) {
+    String strTopic(topic);
+    if (strTopic == config.mqtt_topic_sub) {
         config.current_grid_power = atof(msg);
+        config.last_sensor_time = millis();
+        config.sensor_timeout = false;
+    } else if (strTopic == "Soyosource/cmd/notaus") {
+        if (strcmp(msg, "ON") == 0 || strcmp(msg, "1") == 0) {
+            config.not_aus = true;
+        } else {
+            config.not_aus = false;
+        }
+        executeRegulation();
+    } else if (strTopic == "Soyosource/cmd/static_watt") {
+        config.static_watt = atoi(msg);
+        config.mode = MODE_STATIC;
+        executeRegulation();
     }
 }
 
@@ -322,6 +413,8 @@ void handleMQTT() {
                 if (config.mqtt_topic_sub.length() > 0) {
                     mqttClient.subscribe(config.mqtt_topic_sub.c_str());
                 }
+                mqttClient.subscribe("Soyosource/cmd/#");
+                publishHomeAssistantDiscovery();
             }
         }
     } else {
@@ -375,6 +468,8 @@ void pollShelly() {
             if (config.shelly_l2) sum += p2;
             if (config.shelly_l3) sum += p3;
             config.current_grid_power = sum;
+            config.last_sensor_time = millis();
+            config.sensor_timeout = false;
         }
     }
     http.end();
@@ -410,6 +505,8 @@ void pollCustomJson() {
 
             if (!current.isNull()) {
                 config.current_grid_power = current.as<float>();
+                config.last_sensor_time = millis();
+                config.sensor_timeout = false;
             }
         }
     }
@@ -422,45 +519,54 @@ void pollCustomJson() {
 void executeRegulation() {
     int targetWatts = 0;
 
+    // Safety priority 1: NotAus button or MQTT command
     if (config.not_aus) {
         targetWatts = 0;
-    } else if (config.mode == MODE_STATIC) {
-        targetWatts = config.static_watt;
-    } else {
-        // Auto modes (MQTT, Shelly, JSON, HTTP)
-        // Power to cover = current grid power + offset
-        float gridDemand = config.current_grid_power + config.target_offset;
-
-        if (gridDemand <= 0) {
-            // We are exporting or at 0 -> Stop feed-in
-            targetWatts = 0;
-        } else {
-            // Grid import: Soyo needs to feed in this power
-            // Check deadband to prevent micro-cycling
-            int diff = abs((int)gridDemand - config.current_watts_out);
-            if (diff < config.deadband && config.current_watts_out > 0) {
-                targetWatts = config.current_watts_out; // Keep previous to prevent oscillation
-            } else {
-                targetWatts = (int)gridDemand;
+    } 
+    // Manual static power mode
+    else if (config.mode == MODE_STATIC) {
+        targetWatts = constrain(config.static_watt, 0, config.max_power);
+    } 
+    // Closed-loop automatic regulation modes (MQTT, Shelly, JSON, HTTP)
+    else {
+        // Safety priority 2: Watchdog check (Failsafe timeout if smart meter silent)
+        if (config.sensor_timeout_sec > 0 && config.last_sensor_time > 0) {
+            if (millis() - config.last_sensor_time > (config.sensor_timeout_sec * 1000UL)) {
+                config.sensor_timeout = true;
             }
         }
 
-        // Divide by number of parallel Soyosources
-        if (config.soyo_count > 1) {
-            targetWatts /= config.soyo_count;
+        if (config.sensor_timeout) {
+            targetWatts = 0;
+        } else {
+            float gridP = config.current_grid_power;
+
+            // Closed loop tolerance window:
+            // If grid power is within tolerance (e.g. -20W <= gridP <= +5W), maintain current feed-in!
+            if (gridP >= config.tolerance_export && gridP <= config.tolerance_import) {
+                targetWatts = config.current_watts_out;
+            } else {
+                // Out of balance:
+                // gridP > tolerance_import -> importing from grid, increase feed-in
+                // gridP < tolerance_export -> exporting to grid, decrease feed-in
+                int delta = (int)round(gridP - config.target_offset);
+                int newWatts = config.current_watts_out + delta;
+                targetWatts = constrain(newWatts, 0, config.max_power);
+            }
+
+            // Power division among parallel inverters
+            if (config.soyo_count > 1) {
+                targetWatts /= config.soyo_count;
+            }
         }
     }
 
-    // Apply safety clamp
+    // Safety clamp to max_power
     targetWatts = constrain(targetWatts, 0, config.max_power);
     config.current_watts_out = targetWatts;
 
-    // Build and send 8-byte RS485 Frame at 4800 Baud
-    uint8_t frame[8];
-    SoyosourceProtocol::buildFrame((uint16_t)targetWatts, frame);
-
-    Serial.write(frame, 8);
-    Serial.flush();
+    // Transmit 8-byte RS485 frame at 4800 Baud with hardware DE/RE pin control
+    SoyosourceProtocol::sendFrame(Serial, (uint16_t)targetWatts, config.rs485_dere_pin);
 
     config.last_packet_time = millis();
 }
@@ -476,6 +582,7 @@ void publishTelemetry() {
     doc["L3"] = config.current_l3;
     doc["NotAus"] = config.not_aus;
     doc["Mode"] = config.mode;
+    doc["SensorTimeout"] = config.sensor_timeout;
     doc["Uptime"] = getUptimeStr();
 
     char buf[512];
@@ -487,16 +594,18 @@ void publishTelemetry() {
 // Arduino Setup & Loop
 // ==========================================
 void setup() {
+    config.start_time = millis();
+    config.last_sensor_time = millis();
+    ConfigManager::loadConfig(config);
+
+    if (config.rs485_dere_pin >= 0) {
+        pinMode(config.rs485_dere_pin, OUTPUT);
+        digitalWrite(config.rs485_dere_pin, LOW);
+    }
+
     // Soyosource RS485 operates strictly at 4800 Baud, 8N1
     Serial.begin(4800);
     delay(200);
-
-    Serial.println(F("\n====================================="));
-    Serial.println(F("SOYOSOURCE Controller - Open Source C++"));
-    Serial.println(F("====================================="));
-
-    config.start_time = millis();
-    ConfigManager::loadConfig(config);
 
     setupWiFi();
     setupWebServer();

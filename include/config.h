@@ -34,7 +34,11 @@ struct SystemConfig {
     int max_power = 900;        // Max wattage limit
     int wait_seconds = 2;       // Regulation interval (seconds)
     int deadband = 15;          // Tolerance threshold in Watts
-    int target_offset = 0;      // Offset to avoid grid export (e.g. -20W)
+    int target_offset = 0;      // Offset to avoid grid export (e.g. +10W)
+    int tolerance_export = -20; // Grid export threshold before lowering output (W)
+    int tolerance_import = 5;   // Grid import threshold before increasing output (W)
+    int rs485_dere_pin = 0;     // Hardware DE/RE direction pin (0 = GPIO0/D3, -1 = disabled/auto-flow)
+    int sensor_timeout_sec = 30;// Failsafe timeout in seconds (0 = disabled)
     bool not_aus = false;       // Emergency stop flag
 
     // MQTT Settings
@@ -64,6 +68,8 @@ struct SystemConfig {
     int current_watts_out = 0;
     unsigned long start_time = 0;
     unsigned long last_packet_time = 0;
+    unsigned long last_sensor_time = 0;
+    bool sensor_timeout = false;
     String last_error = "";
 };
 
@@ -109,6 +115,10 @@ public:
         if (doc.containsKey("wait_seconds")) cfg.wait_seconds = doc["wait_seconds"].as<int>();
         if (doc.containsKey("deadband")) cfg.deadband = doc["deadband"].as<int>();
         if (doc.containsKey("target_offset")) cfg.target_offset = doc["target_offset"].as<int>();
+        if (doc.containsKey("tolerance_export")) cfg.tolerance_export = doc["tolerance_export"].as<int>();
+        if (doc.containsKey("tolerance_import")) cfg.tolerance_import = doc["tolerance_import"].as<int>();
+        if (doc.containsKey("rs485_dere_pin")) cfg.rs485_dere_pin = doc["rs485_dere_pin"].as<int>();
+        if (doc.containsKey("sensor_timeout_sec")) cfg.sensor_timeout_sec = doc["sensor_timeout_sec"].as<int>();
         if (doc.containsKey("not_aus")) cfg.not_aus = doc["not_aus"].as<bool>();
 
         if (doc.containsKey("mqtt_server")) cfg.mqtt_server = doc["mqtt_server"].as<String>();
@@ -154,6 +164,10 @@ public:
         doc["wait_seconds"] = cfg.wait_seconds;
         doc["deadband"] = cfg.deadband;
         doc["target_offset"] = cfg.target_offset;
+        doc["tolerance_export"] = cfg.tolerance_export;
+        doc["tolerance_import"] = cfg.tolerance_import;
+        doc["rs485_dere_pin"] = cfg.rs485_dere_pin;
+        doc["sensor_timeout_sec"] = cfg.sensor_timeout_sec;
         doc["not_aus"] = cfg.not_aus;
 
         doc["mqtt_server"] = cfg.mqtt_server;

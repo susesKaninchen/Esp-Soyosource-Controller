@@ -159,12 +159,15 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     <div class="container">
         <header>
             <h1 id="headerTitle">SOYOSOURCE Controller</h1>
-            <div class="subtitle" id="subTitle">by BavarianSuperGuy / Open Source Edition</div>
+            <div class="subtitle" id="subTitle">Open-Source Fork von susesKaninchen &bull; Basierend auf KlausLi / BavarianSuperGuy</div>
             <div id="heartbeatBadge" class="heartbeat">ESP Herzschlag: OK</div>
         </header>
 
         <div id="notausBanner" class="notaus-banner">
             ⚠️ NOTAUS IST AKTIV! Einspeisung ist gestoppt (0 Watt).
+        </div>
+        <div id="timeoutBanner" class="notaus-banner" style="background: #fffaf0; color: #c05621; border-color: #dd6b20;">
+            ⚠️ SENSOR TIMEOUT! Smartmeter sendet keine Daten mehr. Notabschaltung auf 0W aktiv.
         </div>
 
         <!-- Live Power Status -->
@@ -313,16 +316,30 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 <!-- Fine Tuning -->
                 <div class="grid-3">
                     <div class="form-group">
-                        <label>Wartezeit (Sekunden)</label>
+                        <label>Wartezeit (s)</label>
                         <input type="number" id="cfg_wait_seconds" name="wait_seconds" min="1" max="10" value="2">
                     </div>
                     <div class="form-group">
-                        <label>Totband / Hysterese (W)</label>
-                        <input type="number" id="cfg_deadband" name="deadband" min="0" max="100" value="15">
+                        <label>Einspeise-Toleranz (W)</label>
+                        <input type="number" id="cfg_tolerance_export" name="tolerance_export" placeholder="-20" value="-20">
                     </div>
                     <div class="form-group">
+                        <label>Bezugs-Toleranz (W)</label>
+                        <input type="number" id="cfg_tolerance_import" name="tolerance_import" placeholder="5" value="5">
+                    </div>
+                </div>
+                <div class="grid-3">
+                    <div class="form-group">
                         <label>Ziel-Offset (W)</label>
-                        <input type="number" id="cfg_target_offset" name="target_offset" placeholder="z.B. -10" value="0">
+                        <input type="number" id="cfg_target_offset" name="target_offset" placeholder="z.B. 0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Sensor-Timeout (s)</label>
+                        <input type="number" id="cfg_sensor_timeout_sec" name="sensor_timeout_sec" min="0" max="300" value="30">
+                    </div>
+                    <div class="form-group">
+                        <label>RS485 DE/RE Pin</label>
+                        <input type="number" id="cfg_rs485_dere_pin" name="rs485_dere_pin" placeholder="0 für GPIO0/D3, -1 für Auto" value="0">
                     </div>
                 </div>
 
@@ -339,6 +356,10 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <a href="/NotAus" target="_blank">🛑 NotAus API</a> |
             <a href="/NotAusAus" target="_blank">✅ NotAus Aufheben</a>
         </div>
+
+        <footer style="text-align: center; margin-top: 25px; padding-bottom: 20px; font-size: 0.8rem; color: #a0aec0;">
+            Open-Source Fork gepflegt von <a href="https://github.com/susesKaninchen/Esp-Soyosource-Controller" target="_blank" style="color: #4a5568; text-decoration: underline;">susesKaninchen</a> &bull; Basierend auf Konzepten von KlausLi &amp; BavarianSuperGuy
+        </footer>
     </div>
 
     <script>
@@ -417,9 +438,12 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                     document.getElementById('valL2').innerText = (parseFloat(data.L2) || 0).toFixed(1);
                     document.getElementById('valL3').innerText = (parseFloat(data.L3) || 0).toFixed(1);
 
-                    // NotAus State
+                    // NotAus & Timeout State
                     let isNotAus = (data.NotAus === "1" || data.NotAus === true);
                     document.getElementById('notausBanner').style.display = isNotAus ? "block" : "none";
+
+                    let isTimeout = (data.sensor_timeout === true || data.sensor_timeout === "1");
+                    document.getElementById('timeoutBanner').style.display = isTimeout ? "block" : "none";
 
                     // Heartbeat indicator
                     beatState = !beatState;
@@ -459,8 +483,11 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                     if (data.JsonValuePath) document.getElementById('cfg_json_value_path').value = data.JsonValuePath;
 
                     if (data.WaitSekunden) document.getElementById('cfg_wait_seconds').value = data.WaitSekunden;
-                    if (data.deadband) document.getElementById('cfg_deadband').value = data.deadband;
-                    if (data.target_offset) document.getElementById('cfg_target_offset').value = data.target_offset;
+                    if (data.tolerance_export !== undefined) document.getElementById('cfg_tolerance_export').value = data.tolerance_export;
+                    if (data.tolerance_import !== undefined) document.getElementById('cfg_tolerance_import').value = data.tolerance_import;
+                    if (data.target_offset !== undefined) document.getElementById('cfg_target_offset').value = data.target_offset;
+                    if (data.sensor_timeout_sec !== undefined) document.getElementById('cfg_sensor_timeout_sec').value = data.sensor_timeout_sec;
+                    if (data.rs485_dere_pin !== undefined) document.getElementById('cfg_rs485_dere_pin').value = data.rs485_dere_pin;
 
                     if (data.static_watt !== undefined) {
                         document.getElementById('staticSlider').value = data.static_watt;

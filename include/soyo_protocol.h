@@ -58,4 +58,25 @@ public:
         if (frame[0] != HEADER_0 || frame[1] != HEADER_1) return false;
         return (frame[7] == calculateChecksum(frame));
     }
+
+    /**
+     * Send an 8-byte frame over HardwareSerial with optional RS485 DE/RE control.
+     */
+    static void sendFrame(HardwareSerial& serial, uint16_t watts, int derePin = -1) {
+        uint8_t frame[8];
+        buildFrame(watts, frame);
+
+        if (derePin >= 0) {
+            digitalWrite(derePin, HIGH);
+            delayMicroseconds(60);
+        }
+
+        serial.write(frame, 8);
+        serial.flush();
+
+        if (derePin >= 0) {
+            delayMicroseconds(60);
+            digitalWrite(derePin, LOW);
+        }
+    }
 };
