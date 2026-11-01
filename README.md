@@ -137,6 +137,26 @@ Die Betriebsart wird im Web-Dashboard gewählt:
 
 ---
 
+## Multi-Inverter & Kaskadenbetrieb (bis zu 16 Wechselrichter)
+
+Der Controller unterstützt große Installationen mit mehreren parallel oder kaskadiert betriebenen Soyosource-Wechselrichtern:
+
+### 1. Paralleler Betrieb am selben RS485-Bus (Sollwert-Teiler)
+- **Funktionsweise:** Alle Wechselrichter sind parallel an die RS485-Klemmen A und B angeschlossen. Da das Soyosource-Limiter-Protokoll ein reiner Broadcast ohne individuelle Adressierung ist, empfangen alle Geräte denselben Leistungsbefehl.
+- **Einstellung `SoyoCount`:** Wird `SoyoCount = 6` eingestellt, teilt der Controller den Gesamtbedarf durch 6:
+  - Gesamtbedarf: 1200 W -> Der ESP sendet 200 W an den Bus.
+  - Jeder der 6 Inverter speist 200 W ein -> Summe: exakt 1200 W.
+- **MaxPower:** Kann im Dashboard bis 10.000 W skaliert werden.
+
+### 2. Nachgeschalteter Gateway- / Aktor-Modus (Externe Steuerung)
+- Wenn eine übergeordnete Lösung (z.B. **Home Assistant**, **OpenEMS**, **ioBroker**, **Node-RED** oder **evcc**) die übergeordnete Regelung, Akku-Kaskadierung oder stufenweise Relais-Zuschaltung übernimmt:
+  - Das externe System sendet den gewünschten Leistungswert einfach an den Controller:
+    - **Per MQTT:** Topic `Soyosource/cmd/static_watt` mit Wattzahl (z.B. `1500`)
+    - **Per HTTP-REST:** `GET http://<IP>/L1L2L3Static?Value=1500` oder `GET http://<IP>/L1L2L3Auto?Value=1500`
+  - **Vorteil dieser Trennung:** Der ESP fungiert als autarkes Sicherheits-Gateway. Selbst wenn das übergeordnete System abstürzt oder das WLAN ausfällt, schützt der integrierte Watchdog den Speicher und drosselt nach 30 Sekunden automatisch auf 0 Watt.
+
+---
+
 ## REST-API Referenz
 
 | Endpunkt | Methode | Beschreibung | Beispiel |

@@ -220,7 +220,7 @@ void handleNotAusAus() {
 
 void handleMaxPower() {
     if (server.hasArg("Value")) {
-        config.max_power = constrain(server.arg("Value").toInt(), 50, 2000);
+        config.max_power = constrain(server.arg("Value").toInt(), 50, 10000);
         ConfigManager::saveConfig(config);
         server.send(200, "application/json", "{\"status\":\"ok\",\"max_power\":" + String(config.max_power) + "}");
     } else {
@@ -230,7 +230,7 @@ void handleMaxPower() {
 
 void handleSoyoCount() {
     if (server.hasArg("Value")) {
-        config.soyo_count = constrain(server.arg("Value").toInt(), 1, 10);
+        config.soyo_count = constrain(server.arg("Value").toInt(), 1, 16);
         ConfigManager::saveConfig(config);
         server.send(200, "application/json", "{\"status\":\"ok\",\"soyo_count\":" + String(config.soyo_count) + "}");
     } else {

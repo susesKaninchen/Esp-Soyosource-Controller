@@ -207,9 +207,9 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             
             <div style="margin-top: 18px;">
                 <label>Statische Einspeisung (Handbetrieb): <b id="sliderValDisplay">0</b> W</label>
-                <input type="range" id="staticSlider" min="0" max="1200" step="10" value="0" oninput="updateSliderDisplay(this.value)">
+                <input type="range" id="staticSlider" min="0" max="6000" step="25" value="0" oninput="updateSliderDisplay(this.value)">
                 <div style="display: flex; gap: 8px;">
-                    <input type="number" id="staticInput" placeholder="Watt eingeben" min="0" max="1200" style="flex: 1;">
+                    <input type="number" id="staticInput" placeholder="Watt eingeben" min="0" max="6000" style="flex: 1;">
                     <button class="btn" onclick="applyStatic()">Übernehmen</button>
                 </div>
             </div>
@@ -404,7 +404,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
         function adjustSoyoCount(delta) {
             let cur = liveConfig.soyo_count || 1;
-            let next = Math.max(1, cur + delta);
+            let next = Math.min(16, Math.max(1, cur + delta));
             fetch('/SoyoCount?Value=' + next).then(r => fetchTelemetry());
         }
 

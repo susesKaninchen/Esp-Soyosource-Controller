@@ -47,11 +47,11 @@ struct SystemConfig {
     int mqtt_port = 1883;
     String mqtt_user = "";
     String mqtt_pass = "";
-    String mqtt_topic_sub = "shellies/shellyem3/emeter/0/power"; // Default topic
+    String mqtt_topic_sub = "Soyosource/L1L2L3"; // Grid balance input topic
     String mqtt_topic_pub = "Soyosource/AllJsonData";
 
     // Shelly Settings
-    String shelly_ip = "192.168.178.54";
+    String shelly_ip = "";
     bool shelly_is_pro = false; // true for Pro 3EM (Gen2 RPC), false for Gen1 3EM
     bool shelly_l1 = true;
     bool shelly_l2 = true;
